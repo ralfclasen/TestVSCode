@@ -1,0 +1,11 @@
+name: synology_qwen_sandbox
+version: 0.0.1
+schema: v1
+mcpServers:
+  - name: synology_qwen_sandbox
+    command: ssh
+    args:
+      - rclasen@192.168.178.30
+      - sudo /usr/local/bin/docker exec -i qwen_code_sandbox fastmcp run /app/mcp_server.py
+    env: {}
+

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kaffeekosten Tracker</title>
+  <style>
+    :root {
+      --bg: #faf7f2;
+      --card: #ffffff;
+      --text: #2b2620;
+      --muted: #8a8175;
+      --accent: #6f4e37; /* Kaffee-Braun */
+      --border: #e5ddd2;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 2rem 1rem 3rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    form {
+      display: grid;
+      gap: 0.9rem;
+    }
+
+    label {
+      display: grid;
+      gap: 0.3rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    input {
+      padding: 0.55rem 0.7rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 1rem;
+      background: #fff;
+      color: var(--text);
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    button[type="submit"] {
+      padding: 0.65rem;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    button[type="submit"]:hover { opacity: 0.9; }
+
+    h2 {
+      font-size: 1.05rem;
+      margin: 0 0 0.75rem;
+    }
+
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    li.entry {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    li.entry:last-child { border-bottom: none; }
+
+    .entry-date { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+    .entry-note { flex: 1; overflow-wrap: anywhere; }
+    .entry-amount { font-weight: 600; white-space: nowrap; }
+
+    button.delete {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 0 0.25rem;
+    }
+
+    button.delete:hover { color: #b3402a; }
+
+    .empty-state {
+      color: var(--muted);
+      font-size: 0.9rem;
+      text-align: center;
+      padding: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>&#9749; Kaffeekosten</h1>
+
+    <!-- Formular: Ausgabe eintragen -->
+    <section class="card">
+      <form id="expense-form" novalidate>
+        <label>
+          Datum
+          <input type="date" id="date" required />
+        </label>
+        <label>
+          Betrag (€)
+          <input type="number" id="amount" min="0.01" step="0.01" placeholder="3,50" required />
+        </label>
+        <label>
+          Notiz (optional)
+          <input type="text" id="note" maxlength="60" placeholder="z. B. Flat White" />
+        </label>
+        <button type="submit">Speichern</button>
+      </form>
+    </section>
+
+    <!-- Liste der Einträge -->
+    <section class="card">
+      <h2>Einträge</h2>
+      <ul id="expense-list"></ul>
+      <p id="empty-state" class="empty-state" hidden>Noch keine Einträge – trage oben deine erste Kaffeeausgabe ein.</p>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    const STORAGE_KEY = "coffeeExpenses.v1";
+
+    // ---------- Persistenz (localStorage) ----------
+    function loadEntries() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return []; // kaputte Daten → leer starten statt Crash
+      }
+    }
+
+    function saveEntries(entries) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    }
+
+    // ---------- Formatierung ----------
+    const euroFormat = new Intl.NumberFormat("de-DE", {
+      style: "currency",
+      currency: "EUR",
+    });
+
+    function formatCents(cents) {
+      return euroFormat.format(cents / 100);
+    }
+
+    function formatDate(isoDate) {
+      // T00:00:00 anhängen, damit das Datum nicht eine Zeitzone verschoben wird
+      const d = new Date(isoDate + "T00:00:00");
+      return new Intl.DateTimeFormat("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }).format(d);
+    }
+
+    // ---------- UI ----------
+    const form = document.getElementById("expense-form");
+    const dateInput = document.getElementById("date");
+    const amountInput = document.getElementById("amount");
+    const noteInput = document.getElementById("note");
+    const listEl = document.getElementById("expense-list");
+    const emptyStateEl = document.getElementById("empty-state");
+
+    // Datum-Default: heute (lokale Zeit, nicht UTC!)
+    function todayISO() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function renderList(entries) {
+      listEl.innerHTML = "";
+      emptyStateEl.hidden = entries.length > 0;
+
+      // Neueste zuerst (bei gleichem Datum: zuletzt angelegte oben)
+      const sorted = [...entries].sort((a, b) =>
+        a.date === b.date ? b.id.localeCompare(a.id) : b.date.localeCompare(a.date)
+      );
+
+      for (const entry of sorted) {
+        const li = document.createElement("li");
+        li.className = "entry";
+
+        const dateSpan = document.createElement("span");
+        dateSpan.className = "entry-date";
+        dateSpan.textContent = formatDate(entry.date);
+
+        const noteSpan = document.createElement("span");
+        noteSpan.className = "entry-note";
+        noteSpan.textContent = entry.note || "";
+
+        const amountSpan = document.createElement("span");
+        amountSpan.className = "entry-amount";
+        amountSpan.textContent = formatCents(entry.amountCents);
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "delete";
+        deleteBtn.title = "Eintrag löschen";
+        deleteBtn.setAttribute("aria-label", `Eintrag vom ${formatDate(entry.date)} löschen`);
+        deleteBtn.textContent = "\u00d7";
+        deleteBtn.addEventListener("click", () => {
+          saveEntries(loadEntries().filter((e) => e.id !== entry.id));
+          renderList(loadEntries());
+        });
+
+        li.append(dateSpan, noteSpan, amountSpan, deleteBtn);
+        listEl.appendChild(li);
+      }
+    }
+
+    // ---------- Formular-Submit ----------
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+
+      const date = dateInput.value;
+      const amountValue = parseFloat(amountInput.value.replace(",", "."));
+      const note = noteInput.value.trim();
+
+      if (!date) {
+        alert("Bitte ein Datum wählen.");
+        return;
+      }
+      if (Number.isNaN(amountValue) || amountValue <= 0) {
+        alert("Bitte einen Betrag größer als 0 eingeben.");
+        return;
+      }
+
+      const entry = {
+        id: crypto.randomUUID(),
+        date,                 // "2026-01-15"
+        amountCents: Math.round(amountValue * 100), // Cent → keine Float-Fehler
+        note,
+      };
+
+      const entries = loadEntries();
+      entries.push(entry);
+      saveEntries(entries);
+
+      renderList(entries);
+      form.reset();
+      dateInput.value = todayISO();
+    });
+
+    // ---------- Start ----------
+    dateInput.value = todayISO();
+    renderList(loadEntries());
+  </script>
+</body>
+</html>
