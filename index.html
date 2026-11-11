@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kaffeekosten Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <style>
     :root {
       --bg: #faf7f2;
@@ -124,6 +125,62 @@
       text-align: center;
       padding: 1rem 0;
     }
+
+    /* Statistiken */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .stat-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem 0.75rem;
+    }
+
+    .stat-label {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .stat-value {
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    /* Chart */
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .chart-header h2 { margin: 0; }
+
+    button.chart-toggle {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--muted);
+      font-size: 0.8rem;
+      padding: 0.35rem 0.6rem;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    button.chart-toggle:hover { color: var(--accent); border-color: var(--accent); }
+
+    .chart-wrapper {
+      position: relative;
+      height: 220px;
+    }
   </style>
 </head>
 <body>
@@ -147,6 +204,40 @@
         </label>
         <button type="submit">Speichern</button>
       </form>
+    </section>
+
+    <!-- Statistiken -->
+    <section class="card">
+      <h2>Statistik</h2>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <span class="stat-label">Gesamt</span>
+          <span class="stat-value" id="stat-total">0,00 €</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Dieser Monat</span>
+          <span class="stat-value" id="stat-month">0,00 €</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Einträge</span>
+          <span class="stat-value" id="stat-count">0</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Ø pro Tag</span>
+          <span class="stat-value" id="stat-avg">–</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Kostenverlauf (Chart.js) -->
+    <section class="card">
+      <div class="chart-header">
+        <h2>Kosten der letzten 14 Tage</h2>
+        <button type="button" id="chart-type-btn" class="chart-toggle">&#128200; Linie anzeigen</button>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="cost-chart"></canvas>
+      </div>
     </section>
 
     <!-- Liste der Einträge -->
