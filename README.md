@@ -4,7 +4,7 @@
 Eine minimalistische Single-Page-App für den Mac-Browser, mit der ich meine täglichen Kaffeekosten unkompliziert erfassen, speichern und visuell auswerten kann. Alle Daten verbleiben absolut privat im lokalen Speicher des Browsers.
 
 ## Tech-Stack
-- Frontend: HTML5, CSS (Tailwind via CDN)
+- Frontend: HTML5, CSS (eigenes Stylesheet im `<style>`-Block)
 - Logik & Zustand: Vanilla JavaScript
 - Datenbank: Browser-interner `localStorage`
 - Visualisierung: Chart.js via CDN
@@ -14,3 +14,6 @@ Eine minimalistische Single-Page-App für den Mac-Browser, mit der ich meine tä
 - [x] Datenpersistenz (Automatisches Speichern und Laden via localStorage)
 - [x] Lösch-Funktion (Einzelne Einträge direkt aus der Liste entfernen)
 - [x] Visuelle Charts & Statistiken (Balken-/Liniendiagramm zur Kostenübersicht)
+
+## Offene Punkte
+- [ ] Umstellung des eigenen CSS auf Tailwind via CDN (Design beibehalten, Stylesheet in Utility-Klassen überführen)
